@@ -358,7 +358,8 @@ ClearFAC:
 */
 ClsCmd:
     lda #$93
-    jmp kernal.VEC_CHROUT
+    jsr kernal.VEC_CHROUT
+    rts
 
 /*
 

@@ -2,24 +2,20 @@ KICK=kickass
 TOOLS=../tools
 SRC=../src
 
-all: main.prg cart_header.prg headers
+all: basicext.prg headers
 
 # Build the BASIC extension (maps at $C000)
-main.prg: main.asm memory.asm reu.asm sprites.asm gpio.asm pwm.asm i2c.asm dma.asm \
+basicext.prg: main.asm memory.asm reu.asm sprites.asm gpio.asm pwm.asm i2c.asm dma.asm \
           include/all.asm include/hw_regs.asm
-	$(KICK) main.asm -vicesymbols -bytedump -debugdump
+	$(KICK) main.asm -o basicext.prg -vicesymbols -bytedump -debugdump
 
-# Build the cartridge autostart stub (maps at $8000)
-cart_header.prg: cart_header.asm
-	$(KICK) cart_header.asm -vicesymbols
 
 # Regenerate C headers for the emulator from the built PRG files
-headers: main.prg cart_header.prg
-	python3 $(TOOLS)/prgtoheader.py main.prg $(SRC)/basicext.h BASIC_EXTENSION BASIC_EXT
-	python3 $(TOOLS)/prgtoheader.py cart_header.prg $(SRC)/cartstub.h CART_STUB CART_STUB
+headers: basicext.prg
+	python3 $(TOOLS)/prgtoheader.py basicext.prg $(SRC)/basicext.h BASIC_EXTENSION BASIC_EXT
 
-run: clean main.prg
-	x64sc main.prg
+run: clean basicext.prg
+	x64sc basicext.prg
 
 clean:
-	rm -f main.prg cart_header.prg
+	rm -f basicext.prg
