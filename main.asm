@@ -11,10 +11,14 @@
 
 // Set these to the start/end tokens for commands and functions.
 // You can find the table of tokens below at NewTab
-.label CMDSTART = $cc
-.label CMDEND   = $db
-.label FUNSTART = CMDEND + $01
-.label FUNEND   = $de
+.label CMDSTART  = $cc
+.label CMDEND    = $db
+.label FUNSTART  = CMDEND + $01
+.label FUNEND    = $de
+.label CMD2START = $df   // Second command block: new hardware commands
+.label CMD2END   = $ed   // DMAINCR is the last command ($ed)
+.label FUN2START = $ee   // Second function block: new hardware functions
+.label FUN2END   = $ee
 
 /*
 
@@ -48,6 +52,10 @@ Init:
 #import "reu.asm"           // REU functions/commands
 #import "sprites.asm"       // Sprite commands and functions
 #import "include/timer.asm" // Timer functions
+#import "gpio.asm"          // GPIO: PINMODE, PINOUT, PINPULL
+#import "pwm.asm"           // PWM:  PWMSEL, PWMLVL, PWMWRP, PWMON, PWMOFF
+#import "i2c.asm"           // I2C:  I2CADR, I2CWRT, I2CRDT, I2CSPD
+#import "dma.asm"           // DMA:  DMACPY, DMASIZE
 
 /*
 
@@ -94,13 +102,47 @@ NewTab:
     .byte 'E' + $80
     .text "DI"          // $db
     .byte 'R' + $80
-    // Functions start here
+    // Functions start here (must stay at entries 16-18 = tokens $dc-$de)
     .text "WEE"         // $dc
     .byte 'K' + $80
     .text "SCRLO"       // $dd
     .byte 'C' + $80
     .text "RE"          // $de
     .byte 'U' + $80
+    // New hardware commands start here ($df = CMD2START, entries 19-32)
+    .text "PINMOD"      // $df
+    .byte 'E' + $80
+    .text "PINOU"       // $e0
+    .byte 'T' + $80
+    .text "PINPUL"      // $e1
+    .byte 'L' + $80
+    .text "PWMSE"       // $e2
+    .byte 'L' + $80
+    .text "PWMLV"       // $e3
+    .byte 'L' + $80
+    .text "PWMWR"       // $e4
+    .byte 'P' + $80
+    .text "PWMO"        // $e5
+    .byte 'N' + $80
+    .text "PWMOF"       // $e6
+    .byte 'F' + $80
+    .text "I2CAD"       // $e7
+    .byte 'R' + $80
+    .text "I2CWR"       // $e8
+    .byte 'T' + $80
+    .text "I2CRD"       // $e9
+    .byte 'T' + $80
+    .text "I2CSP"       // $ea
+    .byte 'D' + $80
+    .text "DMACP"       // $eb
+    .byte 'Y' + $80
+    .text "DMASIZ"      // $ec  (typo fix: was DMASIS, now DMASIZ -> DMASIZE)
+    .byte 'E' + $80
+    .text "DMAINC"      // $ed
+    .byte 'R' + $80
+    // New hardware functions start here ($ee = FUN2START)
+    .text "PINGE"       // $ee
+    .byte 'T' + $80
     .byte 0
 
 CmdTab:                         // A table of vectors pointing at your commands' execution addresses
@@ -120,11 +162,28 @@ CmdTab:                         // A table of vectors pointing at your commands'
     .word MemLoadCmd - 1
     .word MemSaveCmd - 1
     .word DirectoryCmd - 1
+    // New hardware command handlers (CMD2START block)
+    .word PinModeCmd - 1        // $df PINMODE
+    .word PinOutCmd  - 1        // $e0 PINOUT
+    .word PinPullCmd - 1        // $e1 PINPULL
+    .word PwmSelCmd  - 1        // $e2 PWMSEL
+    .word PwmLvlCmd  - 1        // $e3 PWMLVL
+    .word PwmWrpCmd  - 1        // $e4 PWMWRP
+    .word PwmOnCmd   - 1        // $e5 PWMON
+    .word PwmOffCmd  - 1        // $e6 PWMOFF
+    .word I2cAdrCmd  - 1        // $e7 I2CADR
+    .word I2cWrtCmd  - 1        // $e8 I2CWRT
+    .word I2cRdtCmd  - 1        // $e9 I2CRDT
+    .word I2cSpdCmd  - 1        // $ea I2CSPD
+    .word DmaCpyCmd  - 1        // $eb DMACPY
+    .word DmaSizeCmd - 1        // $ec DMASIZE
+    .word DmaIncrCmd - 1        // $ed DMAINCR
 
 FunTab:                         // A table of vectors pointing at your functions' execution addresses
     .word WeekFun               // Address of first function. Token = FUNSTART
     .word ScrLocFun
     .word ReuFun
+    .word PinGetFun             // $ed PINGET — Token = FUN2START
 
 /*
 
@@ -143,14 +202,24 @@ ExecuteCommand:
 TestCmd:
     cmp #CMDSTART
     bcc OldCmd
-    cmp #CMDEND + 1
-    bcc OkNew
+    cmp #CMDEND + 1             // < $dc  → first command block
+    bcc OkFirst
+    cmp #CMD2START              // $dc-$de are functions, not commands
+    bcc OldCmd
+    cmp #CMD2END + 1            // < $ed  → second command block
+    bcs OldCmd
+    sec
+    sbc #CMD2START              // 0-based index within second block
+    clc
+    adc #16                     // Offset past the 16 first-block commands
+    jmp Dispatch
 OldCmd:
     jsr zp.CHRGOT
     jmp basic.EXECOLD
-OkNew:
+OkFirst:
     sec
     sbc #CMDSTART
+Dispatch:
     asl
     tax
     lda CmdTab+1, x
@@ -181,13 +250,23 @@ ExecuteFunction:
     bcc OldFun
     cmp #FUNEND + 1
     bcc Ok1New
+    cmp #FUN2START              // Is this a second-block function?
+    bcc OldFun
+    cmp #FUN2END + 1
+    bcs OldFun
+    sec
+    sbc #FUN2START              // 0-based index within second block
+    clc
+    adc #3                      // Offset past the 3 first-block functions
+    jmp FunDispatch
 OldFun:
     jsr zp.CHRGOT               // It's a built-in Commodore function, so re-fetch the token
     jmp basic.FUNCTOLD          // and call the normal BASIC function handler.
 Ok1New:
     sec
     sbc #FUNSTART               // We need to get an index to the function in the vector table
-    asl                         // Start by subtracting to get a 0 based index, and then mult by 2.
+FunDispatch:
+    asl                         // Multiply by 2 for word-sized vector table entries.
     pha
     jsr zp.CHRGET
     jsr basic.PARCHK            // Grab whatever is in parens and evaluate it. This is passed to our function.

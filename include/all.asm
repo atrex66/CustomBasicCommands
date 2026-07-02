@@ -9,3 +9,4 @@
 #import "kernal.asm"
 #import "vic.asm"
 #import "basic.asm"
+#import "hw_regs.asm"

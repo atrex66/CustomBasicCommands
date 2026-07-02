@@ -3,3 +3,7 @@ main.dbg
 main.prg
 main.sym
 main.vs
+*.prg
+*.sym
+*.vs
+*.dbg
