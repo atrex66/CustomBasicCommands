@@ -1,3 +1,8 @@
+### Port of CustomBasicCommands
+
+This is a custom fork of the CustomBasicCommands repo of Barry Walker
+with added commands to the BASIC for able to control raspberry pico hardware it is used in my picoc64plus project.
+New commands for PWM, I2C, GPIO, and DMA, by memory mapped devices in the emulator
 
 ### Introduction
 
