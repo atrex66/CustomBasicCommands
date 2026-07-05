@@ -2,7 +2,8 @@
 
 This is a custom fork of the CustomBasicCommands repo of Barry Walker
 with added commands to the BASIC for able to control raspberry pico hardware it is used in my picoc64plus project.
-New commands for PWM, I2C, GPIO, and DMA, by memory mapped devices in the emulator
+New commands for PWM, I2C, GPIO, and DMA, by memory mapped devices in the emulator, the start address is changed to $8000 for autostart with the picoc64plus virtual machine.
+- [The added commands](https://github.com/atrex66/picoc64plus/NEW_BASIC_COMMANDS.md)
 
 ### Introduction
 
@@ -33,15 +34,6 @@ Suggestions and pull requests are welcome!
 ### Building
 
 This is built with Kick Assembler. The latest version should be fine. There's a Makefile at the root of the directory that you can use to build and run it.
-
-The code assembles at $c000 (49152) which is a 4k block of RAM that's popular with ML programmers.
-
-Once it starts in VICE, type:
-
-```basic
-NEW
-SYS49152
-```
 
 There are now a handful of commands available:
 
