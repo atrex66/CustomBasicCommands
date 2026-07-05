@@ -552,7 +552,8 @@ DiskClose:
 
 /*
 
-    Load bytes from disk directly into memory.
+    // TODO: change to littlefs
+    Load a file from disk directly into memory.
 
     Example: MEMLOAD "SPRITES.SPR", 8, $2000 would load the file SPRITES.SPR from device 8 into memory at $2000
 
@@ -581,6 +582,7 @@ MemLoadCmd:
 
 /*
 
+    TODO:  Change to littlefs
     Save memory to disk.
 
     Example: MEMSAVE "@:SPRITES.SPR,P,W", 8, $2000, $2040 would save memory from $2000 - $2040 to the file SPRITES.SPR on device 8.

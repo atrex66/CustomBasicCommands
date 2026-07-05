@@ -41,3 +41,18 @@
 .label DMA_COUNT_HI    = $D06B   // Transfer count, high byte
 .label DMA_READ_INC    = $D06C   // 1 = increment source address after each transfer
 .label DMA_WRITE_INC   = $D06D   // 1 = increment dest   address after each transfer
+
+
+// ─── SPRITE ─────────────────────────────────────────────────────────────────────────
+// Sprite registers are 8 bytes each, for 64 sprites (0-63). Each sprite has a 255x255 pixel bitmap.
+.label SPRITE_WIDTH     = $A000   // Width
+.label SPRITE_HEIGHT    = $A001   // Height
+.label SPRITE_ENABLED   = $A002   // Enable (1 = visible)
+.label SPRITE_X_LO      = $A003   // X position, low byte
+.label SPRITE_X_HI      = $A004   // X position, high byte
+.label SPRITE_Y_LO      = $A005   // Y position, low byte
+.label SPRITE_Y_HI      = $A006   // Y position, high byte
+.label SPRITE_TRANSPARENCY = $A007   // Transparency the transparency color index (0-255)
+.label SPRITE_BITMAP_LO  = $A008   // Bitmap address, low byte
+.label SPRITE_BITMAP_HI  = $A009   // Bitmap address, high byte
+
