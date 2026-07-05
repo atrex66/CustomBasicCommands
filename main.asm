@@ -1,4 +1,40 @@
-*=$c000
+//--------------------------------
+// cartridge start
+//--------------------------------
+
+* = $8000
+//* = $0820
+.word cold_start
+.word warm_start
+.byte $c3,$c2,$cd,$38,$30 // cartridge magic bytes, CBM80
+
+cold_start:
+        sei
+        stx $d016
+        jsr $fda3 //Prepare IRQ
+        jsr $fd50 //Init memory. Rewrite this routine to speed up boot process.
+        jsr $fd15 //Init I/O
+        jsr $ff5b //Init video
+        cli
+
+warm_start:
+        jsr $E453       // initialise the BASIC vector table
+        jsr $E3BF       // initialise the BASIC RAM locations
+        jsr $E422       // print the start up message and initialise the memory pointers
+        
+        lda #<MyMessage
+        ldy #>MyMessage
+        jsr $AB1E
+        
+        jsr Init
+        ldx #$80
+        jmp ($0300)      // after the basic init to inject our custom commands and functions into the BASIC command/function tables
+
+MyMessage:
+        .byte $0d
+        .text "(PICOC64PLUS BASIC EXTENSION)"
+        .byte $0d
+        .byte 0
 
 #import "include/all.asm"
 
