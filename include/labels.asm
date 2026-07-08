@@ -48,3 +48,30 @@
 .label JOY_DOWN   = %00000010
 .label JOY_LEFT   = %00000100
 .label JOY_RIGHT  = %00001000
+
+.label PWM_SETUP = $80
+.label PWM_SET_FREQ = $81
+.label PWM_SET_DUTY = $82
+.label PWM_CONTROL = $83
+.label PWM_DEINIT = $84
+
+.label GPIO_SET_PINMODE = $90
+.label GPIO_SET_PINOUT = $91
+.label GPIO_SET_PINPULL = $92
+.label GPIO_GET_PINSTATE = $93
+
+.label ADC_READ = $A0
+.label ADC_INIT = $A1
+
+.label DMA_INIT = $B0
+.label DMA_SET_SIZE = $B1
+.label DMA_SET_INCREMENT = $B2
+.label DMA_SET_TRANSFER_COUNT = $B3
+.label DMA_SET_SRC = $B4
+.label DMA_SET_DST = $B5
+.label DMA_START = $B6
+.label DMA_WAIT_COMPLETE = $B7
+.label DMA_ABORT = $B8
+.label DMA_GET_STATUS = $B9
+
+.label WAIT_FRAME = $C0

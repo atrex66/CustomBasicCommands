@@ -27,9 +27,6 @@
 
 */
 I2cAdrCmd:
-    jsr Get8Bit                 // address → Y
-    tya
-    sta I2C_ADDR
     rts
 
 /*
@@ -42,11 +39,6 @@ I2cAdrCmd:
 
 */
 I2cWrtCmd:
-    jsr Get8Bit                 // length → Y
-    tya
-    sta I2C_LEN
-    lda #$01                    // CTRL = 1: start write
-    sta I2C_CTRL
     rts
 
 /*
@@ -59,11 +51,6 @@ I2cWrtCmd:
 
 */
 I2cRdtCmd:
-    jsr Get8Bit                 // length → Y
-    tya
-    sta I2C_LEN
-    lda #$02                    // CTRL = 2: start read
-    sta I2C_CTRL
     rts
 
 /*
@@ -75,7 +62,4 @@ I2cRdtCmd:
 
 */
 I2cSpdCmd:
-    jsr Get8Bit                 // speed → Y
-    tya
-    sta I2C_SPEED
     rts

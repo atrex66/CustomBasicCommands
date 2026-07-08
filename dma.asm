@@ -13,10 +13,39 @@
         DMACPY $0400, $0800, 1000  — copy 1000 bytes from $0400 to $0800
 
     To change transfer width first:
-        DMASIZE 1                  — use 2-byte (halfword) transfers
         DMACPY $0400, $0800, 500   — copy 500 halfwords (1000 bytes)
 
 */
+
+DmaCommon:
+    jsr Get16Bit                // Get the source address (16-bit) into $14/$15
+    lda $14
+    sta r0L
+    lda $15
+    sta r0H
+    jsr basic.CHKCOM
+    jsr Get16Bit                // Get the destination address (16-bit) into $14/$15
+    lda $14
+    sta r1L
+    lda $15
+    sta r1H
+    jsr basic.CHKCOM
+    jsr Get16Bit                // Get the transfer count (16-bit) into $14/$15
+    lda $14
+    sta r2L
+    lda $15
+    sta r2H
+    ldx r2L                       // Load low byte of transfer count into X
+    ldy r2H                       // Load high byte of transfer count into Y
+    SysCall(DMA_SET_TRANSFER_COUNT) // Set the transfer count for DMA
+    ldx r0L                       // Load low byte of source address into X
+    ldy r0H                       // Load high byte of source address into Y
+    SysCall(DMA_SET_SRC)          // Set the source address for DMA
+    ldx r1L                       // Load low byte of destination address into X
+    ldy r1H                       // Load high byte of destination address into Y
+    lda #$00
+    SysCall(DMA_SET_DST)          // Set the destination address for DMA
+    rts
 
 /*
 
@@ -29,41 +58,15 @@
 
 */
 DmaCpyCmd:
-    jsr Get16Bit                // source address → $14 (lo), $15 (hi)
-    lda $14
-    sta DMA_READ_ADDR
-    lda $15
-    sta DMA_READ_ADDR + 1
-    lda #0                      // Upper 16 bits of 32-bit address = 0
-    sta DMA_READ_ADDR + 2
-    sta DMA_READ_ADDR + 3
-
-    jsr basic.CHKCOM
-
-    jsr Get16Bit                // destination address → $14/$15
-    lda $14
-    sta DMA_WRITE_ADDR
-    lda $15
-    sta DMA_WRITE_ADDR + 1
-    lda #0
-    sta DMA_WRITE_ADDR + 2
-    sta DMA_WRITE_ADDR + 3
-
-    jsr basic.CHKCOM
-
-    jsr Get16Bit                // transfer count → $14/$15
-    lda $14
-    sta DMA_COUNT_LO
-    lda $15
-    sta DMA_COUNT_HI
-
-    lda #1                      // Start the DMA transfer
-    sta DMA_CTRL
-
+    jsr DmaCommon
+    ldx #$01
+    ldy #$01
+    SysCall(DMA_SET_INCREMENT)    // Set source and destination increment to 1
+    SysCall(DMA_START)            // Start the DMA transfer
+    SysCall(DMA_WAIT_COMPLETE)    // Wait for the DMA transfer to complete
     rts
 
 /*
-
     DMASIZE n
     Set the DMA transfer width for subsequent DMACPY calls:
         0 = byte (8-bit)
@@ -72,37 +75,15 @@ DmaCpyCmd:
 
     Example: DMASIZE 0  — byte transfers (default)
              DMASIZE 2  — word transfers
-
 */
-DmaSizeCmd:
-    jsr Get8Bit                 // size → Y
-    tya
-    sta DMA_SIZE
+
+DmaFillCmd:
+    jsr DmaCommon
+    SysCall(DMA_SET_DST)          // Set the destination address for DMA
+    ldx #$00
+    ldy #$01
+    SysCall(DMA_SET_INCREMENT)    // Set source and destination increment to 1
+    SysCall(DMA_START)            // Start the DMA transfer
+    SysCall(DMA_WAIT_COMPLETE)    // Wait for the DMA transfer to complete
     rts
 
-/*
-
-    DMAINCR rinc, winc
-    Set whether the source and destination addresses auto-increment after
-    each DMA transfer:
-        0 = fixed address (useful for fills from/to a single location)
-        1 = increment address after each transfer (normal block copy)
-
-    Note: DMACPY always sets both increments to 1.  Use DMAINCR before a
-    POKE-based DMA setup when you need a non-incrementing address, e.g.
-    to fill a region by reading the same source byte repeatedly.
-
-    Example: DMAINCR 0, 1  — fixed source, incrementing dest (memory fill)
-             DMAINCR 1, 1  — both increment (normal copy, same as DMACPY)
-             DMAINCR 1, 0  — incrementing source, fixed dest (stream to port)
-
-*/
-DmaIncrCmd:
-    jsr Get8Bit                 // rinc (0 or 1) → Y
-    tya
-    sta DMA_READ_INC
-    jsr basic.CHKCOM
-    jsr Get8Bit                 // winc (0 or 1) → Y
-    tya
-    sta DMA_WRITE_INC
-    rts

@@ -6,7 +6,7 @@ INCLUDE=../src/include
 all: basicext.prg headers
 
 # Build the BASIC extension (maps at $C000)
-basicext.prg: main.asm memory.asm reu.asm sprites.asm gpio.asm pwm.asm i2c.asm dma.asm \
+basicext.prg: main.asm memory.asm reu.asm sprites.asm gpio.asm pwm.asm i2c.asm dma.asm render.asm \
           include/all.asm include/hw_regs.asm
 	$(KICK) main.asm -o basicext.prg -vicesymbols -bytedump -debugdump
 

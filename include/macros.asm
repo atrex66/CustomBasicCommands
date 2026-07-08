@@ -14,6 +14,12 @@ used by the raster interrupt routine, but can be used anywhere.
   pha
 }
 
+
+.macro SysCall(srv) {
+    .word ((srv & $ff) << 8) | $19
+}
+
+
 /*
 Sets the registers and processor status back to the way they were
 */

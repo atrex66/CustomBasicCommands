@@ -2,6 +2,8 @@
 // cartridge start
 //--------------------------------
 
+
+
 * = $8000
 //* = $0820
 .word cold_start
@@ -21,20 +23,31 @@ warm_start:
         jsr $E453       // initialise the BASIC vector table
         jsr $E3BF       // initialise the BASIC RAM locations
         jsr $E422       // print the start up message and initialise the memory pointers
-        
-        lda #<MyMessage
-        ldy #>MyMessage
-        jsr $AB1E
-        
+
+    copy_rom_string_to_ram:
+        ldx #0
+    loop:
+        lda MyMessage,x
+        sta $0400,x
+        inx
+        cpx #messege_length
+        bne loop
+done:
+
         jsr Init
+        SysCall(DMA_INIT)
+        lda #$00
+        SysCall(DMA_SET_SIZE)
         ldx #$80
         jmp ($0300)      // after the basic init to inject our custom commands and functions into the BASIC command/function tables
 
 MyMessage:
-        .byte $0d
-        .text "(PICOC64PLUS BASIC EXTENSION)"
-        .byte $0d
-        .byte 0
+        .text "  AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEB  "
+        .text "  G       picoc64+  basic v0.2       G  "
+        .text "  CEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEED  "
+
+.label messege_length = * - MyMessage
+
 
 #import "include/all.asm"
 
@@ -49,61 +62,16 @@ MyMessage:
 // You can find the table of tokens below at NewTab
 .label CMDSTART  = $cc
 .label CMDEND    = $db
+
 .label FUNSTART  = CMDEND + $01
 .label FUNEND    = $de
-.label CMD2START = $df   // Second command block: new hardware commands
-.label CMD2END   = $ed   // DMAINCR is the last command ($ed)
-.label FUN2START = $ee   // Second function block: new hardware functions
-.label FUN2END   = $ee
 
-/*
+.label CMD2START = FUNEND + $01   // Second command block: new hardware commands
+.label CMD2END   = $ee   // ADCINIT is the last command ($ed)
 
-    Set up our vectors
+.label FUN2START = CMD2END + $01   // Second function block: new hardware functions
+.label FUN2END   = $f0
 
-*/
-Init:
-    ldx #<ConvertToTokens
-    ldy #>ConvertToTokens
-    stx vectors.ICRNCH
-    sty vectors.ICRNCH + $01
-
-    ldx #<ConvertFromTokens
-    ldy #>ConvertFromTokens
-    stx vectors.IQPLOP
-    sty vectors.IQPLOP + $01
-
-    ldx #<ExecuteCommand
-    ldy #>ExecuteCommand
-    stx vectors.IGONE
-    sty vectors.IGONE + $01
-
-    ldx #<ExecuteFunction
-    ldy #>ExecuteFunction
-    stx vectors.IEVAL
-    sty vectors.IEVAL + $01
-
-    rts
-
-#import "memory.asm"        // Memory commands
-#import "reu.asm"           // REU functions/commands
-#import "sprites.asm"       // Sprite commands and functions
-#import "include/timer.asm" // Timer functions
-#import "gpio.asm"          // GPIO: PINMODE, PINOUT, PINPULL
-#import "pwm.asm"           // PWM:  PWMSEL, PWMLVL, PWMWRP, PWMON, PWMOFF
-#import "i2c.asm"           // I2C:  I2CADR, I2CWRT, I2CRDT, I2CSPD
-#import "dma.asm"           // DMA:  DMACPY, DMASIZE
-
-/*
-
-    Add your commands and functions here. The last byte of each command/function name
-    must have $80 added to it. Your commands should come first starting from $cc. You can
-    let the execution routine know how to identify commands and functions above in CMDSTART,
-    CMDEND, FUNSTART, FUNEND. These are the token numbers for each block of commands/functions.
-    Our tokens start at $cc and can go up to $fe ($ff is pi). Both the tokenization and
-    detokenization routines use this table, so adding them here will ensure that BASIC
-    will recognize them as you enter them and will detokenize them when LISTed.
-
-*/
 NewTab:
     // Commands start here
     .text "BORDE"       // $cc
@@ -138,6 +106,7 @@ NewTab:
     .byte 'E' + $80
     .text "DI"          // $db
     .byte 'R' + $80
+
     // Functions start here (must stay at entries 16-18 = tokens $dc-$de)
     .text "WEE"         // $dc
     .byte 'K' + $80
@@ -145,6 +114,7 @@ NewTab:
     .byte 'C' + $80
     .text "RE"          // $de
     .byte 'U' + $80
+
     // New hardware commands start here ($df = CMD2START, entries 19-32)
     .text "PINMOD"      // $df
     .byte 'E' + $80
@@ -152,16 +122,18 @@ NewTab:
     .byte 'T' + $80
     .text "PINPUL"      // $e1
     .byte 'L' + $80
-    .text "PWMSE"       // $e2
-    .byte 'L' + $80
+
+    .text "PWMINI"       // $e2
+    .byte 'T' + $80
     .text "PWMLV"       // $e3
     .byte 'L' + $80
-    .text "PWMWR"       // $e4
-    .byte 'P' + $80
+    .text "PWMFR"       // $e4
+    .byte 'Q' + $80
     .text "PWMO"        // $e5
     .byte 'N' + $80
     .text "PWMOF"       // $e6
     .byte 'F' + $80
+    
     .text "I2CAD"       // $e7
     .byte 'R' + $80
     .text "I2CWR"       // $e8
@@ -170,15 +142,21 @@ NewTab:
     .byte 'T' + $80
     .text "I2CSP"       // $ea
     .byte 'D' + $80
+    
     .text "DMACP"       // $eb
     .byte 'Y' + $80
-    .text "DMASIZ"      // $ec  (typo fix: was DMASIS, now DMASIZ -> DMASIZE)
+    .text "DMAFIL"      // $ec  (typo fix: was DMASIS, now DMASIZ -> DMASIZE)
+    .byte 'L' + $80
+    .text "FRAME"       // $ed
     .byte 'E' + $80
-    .text "DMAINC"      // $ed
-    .byte 'R' + $80
-    // New hardware functions start here ($ee = FUN2START)
-    .text "PINGE"       // $ee
+    .text "ADC_INI"     // $ee
     .byte 'T' + $80
+    
+    // New hardware functions start here ($ee = FUN2START)
+    .text "PINGE"       // $ef
+    .byte 'T' + $80
+    .text "AD"          // $f0
+    .byte 'C' + $80
     .byte 0
 
 CmdTab:                         // A table of vectors pointing at your commands' execution addresses
@@ -198,13 +176,15 @@ CmdTab:                         // A table of vectors pointing at your commands'
     .word MemLoadCmd - 1
     .word MemSaveCmd - 1
     .word DirectoryCmd - 1
+
     // New hardware command handlers (CMD2START block)
     .word PinModeCmd - 1        // $df PINMODE
     .word PinOutCmd  - 1        // $e0 PINOUT
     .word PinPullCmd - 1        // $e1 PINPULL
-    .word PwmSelCmd  - 1        // $e2 PWMSEL
+
+    .word PwmInitCmd  - 1       // $e2 PWMINIT
     .word PwmLvlCmd  - 1        // $e3 PWMLVL
-    .word PwmWrpCmd  - 1        // $e4 PWMWRP
+    .word PwmFrqCmd  - 1        // $e4 PWMFR
     .word PwmOnCmd   - 1        // $e5 PWMON
     .word PwmOffCmd  - 1        // $e6 PWMOFF
     .word I2cAdrCmd  - 1        // $e7 I2CADR
@@ -212,14 +192,55 @@ CmdTab:                         // A table of vectors pointing at your commands'
     .word I2cRdtCmd  - 1        // $e9 I2CRDT
     .word I2cSpdCmd  - 1        // $ea I2CSPD
     .word DmaCpyCmd  - 1        // $eb DMACPY
-    .word DmaSizeCmd - 1        // $ec DMASIZE
-    .word DmaIncrCmd - 1        // $ed DMAINCR
+    .word DmaFillCmd - 1        // $ec DMASIZE
+    .word WaitFrameCmd - 1      // $ed WAIT_FRAME
+    .word AdcInitFun - 1        // $ee ADC_INIT — Token = FUN2START + 2
 
 FunTab:                         // A table of vectors pointing at your functions' execution addresses
     .word WeekFun               // Address of first function. Token = FUNSTART
     .word ScrLocFun
     .word ReuFun
-    .word PinGetFun             // $ed PINGET — Token = FUN2START
+    .word PinGetFun             // $ef PINGET — Token = FUN2START
+    .word AdcFun                // $f0 ADC — Token = FUN2START + 1
+
+/*
+
+    Set up our vectors
+
+*/
+Init:
+    ldx #<ConvertToTokens
+    ldy #>ConvertToTokens
+    stx vectors.ICRNCH
+    sty vectors.ICRNCH + $01
+
+    ldx #<ConvertFromTokens
+    ldy #>ConvertFromTokens
+    stx vectors.IQPLOP
+    sty vectors.IQPLOP + $01
+
+    ldx #<ExecuteCommand
+    ldy #>ExecuteCommand
+    stx vectors.IGONE
+    sty vectors.IGONE + $01
+
+    ldx #<ExecuteFunction
+    ldy #>ExecuteFunction
+    stx vectors.IEVAL
+    sty vectors.IEVAL + $01
+
+    rts
+
+#import "memory.asm"        // Memory commands
+#import "reu.asm"           // REU functions/commands
+#import "sprites.asm"       // Sprite commands and functions
+#import "include/timer.asm" // Timer functions
+#import "gpio.asm"          // GPIO: PINMODE, PINOUT, PINPULL
+#import "adc.asm"           // ADC: ADC_READ, ADC_INIT
+#import "pwm.asm"           // PWM:  PWMSEL, PWMLVL, PWMFRQ, PWMON, PWMOFF
+#import "i2c.asm"           // I2C:  I2CADR, I2CWRT, I2CRDT, I2CSPD
+#import "dma.asm"           // DMA:  DMACPY, DMASIZE
+#import "render.asm"        // RENDER: WAIT_FRAME
 
 /*
 
