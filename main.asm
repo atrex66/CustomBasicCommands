@@ -32,6 +32,15 @@ warm_start:
         inx
         cpx #messege_length
         bne loop
+copy_rom_color_to_ram:
+        ldx #0
+    loopCol:
+        lda MyColor,x
+        sta $d800,x
+        inx
+        cpx #color_length
+        bne loopCol
+
 done:
 
         jsr Init
@@ -45,8 +54,14 @@ MyMessage:
         .text "  AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEB  "
         .text "  G       picoc64+  basic v0.2       G  "
         .text "  CEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEED  "
-
 .label messege_length = * - MyMessage
+
+MyColor:
+        .byte $00,$00,$00,$10,$11,$12,$13,$14,$15,$15,$16,$17,$18,$19,$1A,$1B,$1C,$1D,$1E,$1F,$1F,$1E,$1D,$1C,$1B,$1A,$19,$18,$17,$16,$15,$15,$14,$13,$12,$11,$10,$00,$00,$00
+        .byte $00,$00,$00,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$00,$00,$00,$00
+        .byte $00,$00,$00,$10,$11,$12,$13,$14,$15,$15,$16,$17,$18,$19,$1A,$1B,$1C,$1D,$1E,$1F,$1F,$1E,$1D,$1C,$1B,$1A,$19,$18,$17,$16,$15,$15,$14,$13,$12,$11,$10,$00,$00,$00
+        .byte $00,$1f,$1f,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1F,$1f,$1f,$1f,$00
+.label color_length = * - MyColor
 
 
 #import "include/all.asm"
