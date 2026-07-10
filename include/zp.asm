@@ -15,3 +15,7 @@
     .label CHRGOT   = CHRGET + $06
     .label TXTPTR   = $7a
 }
+
+.namespace temp{
+    .label FAC_SAVE = $0334
+}

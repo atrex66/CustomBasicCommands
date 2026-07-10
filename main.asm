@@ -296,6 +296,7 @@ Dispatch:
 
 */
 ExecuteFunction:
+    // jsr SaveFac
     lda #0
     sta zp.VALTYP
     jsr zp.CHRGET
@@ -397,10 +398,29 @@ ProcessBinary:
     jsr basic.FINLOG
     jmp !--
 
+
 ClearFAC:
     lda #$00
     ldx #$0a
 !:
+    sta zp.FLOAT, x
+    dex
+    bpl !-
+    rts
+
+SaveFac:
+    ldx #$0a
+!:
+    lda zp.FLOAT, x
+    sta temp.FAC_SAVE, x
+    dex
+    bpl !-
+    rts
+
+RestoreFac:
+    ldx #$0a
+!:
+    lda temp.FAC_SAVE, x
     sta zp.FLOAT, x
     dex
     bpl !-
