@@ -17,6 +17,8 @@ cold_start:
         jsr $fd50 //Init memory. Rewrite this routine to speed up boot process.
         jsr $fd15 //Init I/O
         jsr $ff5b //Init video
+        lda #$14
+        sta $02
         cli
 
 warm_start:
@@ -42,13 +44,75 @@ copy_rom_color_to_ram:
         bne loopCol
 
 done:
-
         jsr Init
         SysCall(DMA_INIT)
         lda #$00
         SysCall(DMA_SET_SIZE)
+        jsr SysCallsCopy            // Copy our SysCall template to the BASIC command/function tables
+        jsr installIRQ
         ldx #$80
-        jmp ($0300)      // after the basic init to inject our custom commands and functions into the BASIC command/function tables
+        jmp ($0300)                 // after the basic init to inject our custom commands and functions into the BASIC command/function tables
+
+installIRQ:
+        sei
+        lda #<plusIRQ
+        sta $0314
+        lda #>plusIRQ
+        sta $0315
+        cli
+        rts
+
+SysCallsCopy:
+        ldx #0
+    loopSys:
+        lda SysCalls,x
+        sta $033c,x
+        inx
+        cpx #syscalls_length
+        bne loopSys
+        rts
+
+SysCalls:
+    .byte  $ad, $34 ,$03  //- template:lda temp.FAC_SAVE
+    .byte  $ae, $35, $03  //-          ldx temp.FAC_SAVE + 1
+    .byte  $ac, $36, $03  //-          ldy temp.FAC_SAVE + 2
+    .byte  $19, $00       //-          .word ((srv & $ff) << 8) | $19
+    .byte  $60            //-          rts
+.label syscalls_length = * - SysCalls
+
+// IRQ handler for the real time clock and cursor flash, removed casette handling
+// the keyboard scan is done here as well, so that the keyboard is scanned at a regular interval
+plusIRQ:
+    jsr $FFEA 	// increment the real time clock
+    lda $CC 	// get the cursor enable, $00 = flash cursor
+    bne irq_exit 	// if flash not enabled skip the flash
+    dec $CD 	// decrement the cursor timing countdown
+    bne irq_exit 	// if not counted out skip the flash
+    lda $02 	// set the flash count
+    sta $CD 	// save the cursor timing countdown
+    ldy $D3 	// get the cursor column
+    lsr $CF 	// shift b0 cursor blink phase into carry
+    ldx $0287 	// get the colour under the cursor
+    lda ($D1),Y // get the character from current screen line
+    bcs plusIRQ2 	// branch if cursor phase b0 was 1
+    inc $CF 	// set the cursor blink phase to 1
+    sta $CE 	// save the character under the cursor
+    jsr $EA24 	// calculate the pointer to colour RAM
+    lda ($F3),Y // get the colour RAM byte
+    sta $0287 	// save the colour under the cursor
+    ldx $0286 	// get the current colour code
+    lda $CE  	// get the character under the cursor
+plusIRQ2:
+    eor #$80 	// toggle b7 of character under cursor
+    jsr $EA1C 	// save the character and colour to the screen @ the cursor
+    // jsr $EA87 	// scan the keyboard
+irq_exit:
+    pla
+    tay
+    pla
+    tax
+    pla
+    rti
 
 MyMessage:
         .text "  AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEB  "
